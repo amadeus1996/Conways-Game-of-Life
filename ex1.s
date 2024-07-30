@@ -14,6 +14,7 @@ formatString: .asciz "%s"
 .global main
 main:
 lea matrice, %edi
+lea matrice_aux, %esi
 
 pushl $m
 pushl $formatInt
@@ -30,9 +31,7 @@ call scanf
 addl $24, %esp
 addl $2, m
 addl $2, n
-
 movl p, %ecx
-
 citire_celule:
 	cmpl $0, %ecx
 	je evolutie
@@ -62,33 +61,34 @@ pushl $k
 pushl $formatInt
 call scanf
 addl $8, %esp
-
 k_iteratii:
 	cmpl $0, k
 	je afisare_matrice
 	
-	movl $1, %ecx
+	movl $2, %ecx
 	k_iteratii_linii:
 		cmpl %ecx, m
 		je cont_k_iteratii
 		
-		movl $1, %edx
+		movl $2, %edx
 		k_iteratii_col:
 			cmpl %edx, n
 			je cont_k_iteratii_col
 			
 			movl %edx, %ebx
+			decl %ebx
 			pushl %edx
+			pushl %ecx
 			movl %ecx, %eax
+			decl %eax
 			mull n
 			addl %ebx, %eax
+		
+			pushl %eax
+			call celula
+			addl $4, %esp
 			
-			#pushl %edi
-			#pushl %eax
-			#call celula
-			#addl $4, %esp
-			#popl %edi
-			
+			popl %ecx
 			popl %edx
 			incl %edx
 			jmp k_iteratii_col
@@ -96,6 +96,7 @@ k_iteratii:
 				incl %ecx
 				jmp k_iteratii_linii
 	cont_k_iteratii:
+		call copiere_matrice
 		decl k
 		jmp k_iteratii
 	
@@ -103,8 +104,7 @@ celula:
 	pushl %ebp
 	movl %esp, %ebp
 	
-	movl 8(%ebp), %edi
-	movl 12(%ebp), %ecx
+	movl 8(%ebp), %ecx
 	
 	xorl %edx, %edx
 	addl 4(%edi, %ecx, 4), %edx
@@ -119,18 +119,72 @@ celula:
 	addl 4(%edi, %ecx, 4), %edx
 	addl -4(%edi, %ecx, 4), %edx
 	
+	subl n, %ecx
+	cmpl $3, %edx
+	je celula_vie
+	ja celula_moarta
+	
+	cmpl $2, %edx
+	jb celula_moarta
+	cmpl $1, (%edi, %ecx, 4)
+	je celula_vie
+	celula_moarta:
+		movl $0, (%esi, %ecx, 4)
+		jmp celula_exit
+	celula_vie:
+		movl $1, (%esi, %ecx, 4)	
+	celula_exit:
+		popl %ebp
+		ret
+	
+copiere_matrice:
+pushl %ebp
+movl %esp, %ebp
+
+movl $2, %ecx
+copiere_linii:
+	cmpl %ecx, m
+	je copiere_exit
+	
+	movl $2, %edx
+	copiere_col:
+		cmpl %edx, n
+		je cont_copiere
+		
+		movl %edx, %ebx
+		decl %ebx
+		pushl %edx
+		movl %ecx, %eax
+		decl %eax
+		mull n
+		addl %ebx, %eax
+		popl %edx
+		
+		movl (%esi, %eax, 4), %ebx
+		movl %ebx, (%edi, %eax, 4)
+
+		incl %edx
+		jmp copiere_col
+		cont_copiere:
+			incl %ecx
+			jmp copiere_linii
+copiere_exit:
 	popl %ebp
 	ret
 	
 afisare_matrice:
-xorl %ecx, %ecx
+movl $1, %ecx
+decl m
+movl n, %eax
+movl %eax, k
+decl k
 afisare_linii:
 	cmpl %ecx, m
 	je exit
 	
-	xorl %edx, %edx
+	movl $1, %edx
 	afisare_coloane:
-		cmpl %edx, n
+		cmpl %edx, k
 		je cont_afisare_coloane
 		
 		movl %edx, %ebx
@@ -153,17 +207,6 @@ afisare_linii:
 		incl %edx
 		jmp afisare_coloane
 		cont_afisare_coloane:
-			pushl %ecx
-			pushl %edx
-			pushl $newLine
-			pushl $formatString
-			call printf
-			pushl $0
-			call fflush
-			addl $12, %esp
-			popl %edx
-			popl %ecx
-			
 			incl %ecx
 			jmp afisare_linii
 	
